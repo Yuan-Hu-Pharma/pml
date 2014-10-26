@@ -1,0 +1,133 @@
+---
+title: 'Pratical Machine-Learining Project: Predict the Exercise Manner'
+author: "Yuan Hu"
+date: "October 24, 2014"
+output: html_document
+---
+
+## Synopsis
+
+Quantified Self devices not only can quantify how much of a particular activity one does, but also quantify how well they do it. Due to the relatively inexpensive data collection, it is highly valued by a lot of companies to help improve health.
+
+The focus of this project is to utilize sampled data to build a model
+to predict the manner in which they did the exercise.
+
+This report is organized as follow:
+
+        1. built the model.
+        2. used cross validation to measure the predictive performance of the model.
+        3. Explain the expected out of sample error.
+        4. Explain the reason why made the choices I did.
+        5. Apply the  machine learning algorithm to 20 different test cases and predict the outcome.
+
+
+
+## 1. Build the Model
+
+
+### 1.1 Data Source
+The data for this project come from this Human Activity Recognition (HAR): [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har). Thank them for sharing their data.
+
+The data set were downloaded from:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The first data set pml-training.csv will be used to build my model.
+The second data set pml-testing.csv has unknown outcome. It will be used to do final prediction.
+
+### Load and Preprocess the raw Data
+
+By loading the data set and scaning through it, missing data strings are considered if the value is 'NA','#DIV/0!' or ''.
+The NAs are also removed out of the data set.
+
+
+```{r cache=TRUE}
+library(plyr)
+# load data set
+train<-read.csv("pml-training.csv", sep=',', header=TRUE, na.strings = c('NA','#DIV/0!',''))
+test<-read.csv("pml-testing.csv", sep=',', header=TRUE, na.strings = c('NA','#DIV/0!',''))
+
+## remove columns with NA values
+train1 <- train[,colSums(is.na(train))==0]
+test1 <-  test[,colSums(is.na(test))==0]
+```
+
+After loading the data sets to data frame, near zero variance method is used to diagnose predictors that have one unique value.
+
+
+```{r cache=TRUE}
+#remove near zero column. nearZeroVar diagnoses  (i.e. are zero variance predictors)
+library(caret)
+nsv<-nearZeroVar(train1)
+train2<-train1[,-nsv]
+dim(train2)
+```
+After the diagnostic test,  there are 47 columns left and 19622 observations in the train data set.
+
+The near zero variance method is not applied to the testing set. To keep the data in the same form, the same column of the unkown 20 testing set are removed.
+
+
+```{r cache=TRUE}
+testing<-test1[,-nsv]
+```
+
+
+## Splitting the training sampling for Cross-Validation
+
+Although there is a unknown testing data set, however, the unkown testing data set has a small sampling size which is 20. We want to split the large training samples to a training set and validation set as suggested in Week 1 class.
+
+
+Since we have a large amount of observations, 60% is used for the training set and 40% is used for the validation set. The data is randomly split into these two parts. Seed was set for reproduction purpose.
+
+
+```{r cache=TRUE}
+set.seed(1000)
+inTrain<- createDataPartition(y=train2$classe, p=0.6, list=F)
+training <-train2[inTrain,]
+validating <-train2[-inTrain,]
+```
+
+
+## choose the model
+
+Based on both the course learning,
+the random forests method has a good accuracy. It's one of the most used and highly accurate method for prediction. 
+Here, I chose the random forests (method = rf) to do the prediction.
+
+As learned from the class, this method can lead to a little bit overfitting. It's very important to use cross validation when using random forests.
+
+
+
+The training set is then fitted with random forests method.
+
+```{r cache=TRUE}
+set.seed(1000)
+library(randomForest)
+modFit <- train(classe ~ ., method = "rf", data =training, prox = TRUE,  trControl = trainControl(method = "cv",number = 4, allowParallel = TRUE))
+```
+
+
+Based on the course instruction and the result shown in the original paper, I expected relatively low out of sample error rate. After building the model, validating set is used to cross-validate the accurary of the model prediction.
+
+
+```{r cache=TRUE}
+Pred <- predict(modFit, validating)
+cm<-confusionMatrix(Pred, validating$classe)
+cm
+```
+
+From the confusion matrix we can find the accuracy of the model is 0.994. 
+The out of sample error is calculated as `1 - accuracy` for predictions made against the cross-validation set. The out of sample error is 0.006. 
+The low out of sample error is in expectation.
+
+
+Then the model is applied to classify the 20 unkown samples. Since the same data preprocessing is already done. I have directly use the predict model to test the samples.
+
+```{r cache=TRUE}
+answers <- predict(modFit, newdata = testing)
+answers
+```
+
+The final prediction give a 20/20 correct answer to the testing data set.
+
+It shows that the prediction model works very well.
