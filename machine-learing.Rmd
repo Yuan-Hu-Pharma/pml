@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ## Synopsis
-
+  
 Quantified Self devices not only can quantify how much of a particular activity one does, but also quantify how well they do it. Due to the relatively inexpensive data collection, it is highly valued by a lot of companies to help improve health.
 
 The focus of this project is to utilize sampled data to build a model
