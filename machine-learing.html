@@ -83,8 +83,8 @@ if (window.hljs && document.readyState && document.readyState === "complete") {
 <p>By loading the data set and scaning through it, missing data strings are considered if the value is ‘NA’,‘#DIV/0!’ or ’’. The NAs are also removed out of the data set.</p>
 <pre class="r"><code>library(plyr)
 # load data set
-train&lt;-read.csv(&quot;pml-training.csv&quot;, sep=',', header=TRUE, na.strings = c('NA','#DIV/0!',''))
-test&lt;-read.csv(&quot;pml-testing.csv&quot;, sep=',', header=TRUE, na.strings = c('NA','#DIV/0!',''))
+train&lt;-read.csv(&quot;pml-training.csv&quot;, header=TRUE, na.strings = c('NA','#DIV/0!',''))
+test&lt;-read.csv(&quot;pml-testing.csv&quot;, header=TRUE, na.strings = c('NA','#DIV/0!',''))
 
 ## remove columns with NA values
 aa &lt;- train[,colSums(is.na(train))==0]
@@ -109,8 +109,10 @@ dim(taa)</code></pre>
 <p>Since we have a large amount of observations, 60% is used for the training set and 40% is used for the validation set. The data is randomly split into these two parts. Seed was set for reproduction purpose.</p>
 <pre class="r"><code>set.seed(1000)
 inTrain   &lt;- createDataPartition(y=taa$classe, p=0.6, list=F)
-training  &lt;-taa[inTrain,]
-validating&lt;-taa[-inTrain,]</code></pre>
+## first 6 column are removed.
+training  &lt;-taa[inTrain,-c(1:6)]
+validating&lt;-taa[-inTrain,-c(1:6)]
+testing&lt;-testing[, -c(1:6)]</code></pre>
 </div>
 <div id="choose-the-model" class="section level2">
 <h2>choose the model</h2>
@@ -118,8 +120,38 @@ validating&lt;-taa[-inTrain,]</code></pre>
 <p>As learned from the class, this method can lead to a little bit overfitting. It’s very important to use cross validation when using random forests.</p>
 <p>The training set is then fitted with random forests method.</p>
 <pre class="r"><code>set.seed(2000)
-library(randomForest)
-modFit &lt;- train(classe ~ ., method = &quot;rf&quot;, data =training, prox = TRUE)</code></pre>
+library(randomForest)</code></pre>
+<pre><code>## randomForest 4.6-10
+## Type rfNews() to see new features/changes/bug fixes.</code></pre>
+<pre class="r"><code>modFit &lt;- train(classe ~ ., method = &quot;rf&quot;, data =training, prox = TRUE, 
+                trControl = trainControl(method = &quot;cv&quot;,number = 4, allowParallel = TRUE, verboseIter = TRUE))</code></pre>
+<pre><code>## + Fold1: mtry= 2 
+## - Fold1: mtry= 2 
+## + Fold1: mtry=27 
+## - Fold1: mtry=27 
+## + Fold1: mtry=52 
+## - Fold1: mtry=52 
+## + Fold2: mtry= 2 
+## - Fold2: mtry= 2 
+## + Fold2: mtry=27 
+## - Fold2: mtry=27 
+## + Fold2: mtry=52 
+## - Fold2: mtry=52 
+## + Fold3: mtry= 2 
+## - Fold3: mtry= 2 
+## + Fold3: mtry=27 
+## - Fold3: mtry=27 
+## + Fold3: mtry=52 
+## - Fold3: mtry=52 
+## + Fold4: mtry= 2 
+## - Fold4: mtry= 2 
+## + Fold4: mtry=27 
+## - Fold4: mtry=27 
+## + Fold4: mtry=52 
+## - Fold4: mtry=52 
+## Aggregating results
+## Selecting tuning parameters
+## Fitting mtry = 27 on full training set</code></pre>
 <p>Based on the course instruction and the result shown in the original paper, I expected relatively low out of sample error rate. After building the model, validating set is used to cross-validate the accurary of the model prediction.</p>
 <pre class="r"><code>Pred &lt;- predict(modFit, validating)
 cm&lt;-confusionMatrix(Pred, validating$classe)
@@ -128,37 +160,40 @@ cm</code></pre>
 ## 
 ##           Reference
 ## Prediction    A    B    C    D    E
-##          A 4459    0    0    0    0
-##          B    5 3037    0    0    0
-##          C    0    0 2737    0    0
-##          D    0    0    0 2570    0
-##          E    0    0    0    2 2885
+##          A 2230   26    0    0    0
+##          B    2 1488   11    1    3
+##          C    0    4 1353   26    2
+##          D    0    0    4 1259    3
+##          E    0    0    0    0 1434
 ## 
 ## Overall Statistics
-##                                           
-##                Accuracy : 0.9996          
-##                  95% CI : (0.9991, 0.9998)
-##     No Information Rate : 0.2844          
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
-##                                           
-##                   Kappa : 0.9994          
-##  Mcnemar's Test P-Value : NA              
+##                                          
+##                Accuracy : 0.9895         
+##                  95% CI : (0.987, 0.9917)
+##     No Information Rate : 0.2845         
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
+##                                          
+##                   Kappa : 0.9868         
+##  Mcnemar's Test P-Value : NA             
 ## 
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            0.9989   1.0000   1.0000   0.9992   1.0000
-## Specificity            1.0000   0.9996   1.0000   1.0000   0.9998
-## Pos Pred Value         1.0000   0.9984   1.0000   1.0000   0.9993
-## Neg Pred Value         0.9996   1.0000   1.0000   0.9998   1.0000
-## Prevalence             0.2844   0.1935   0.1744   0.1639   0.1838
-## Detection Rate         0.2841   0.1935   0.1744   0.1637   0.1838
-## Detection Prevalence   0.2841   0.1938   0.1744   0.1637   0.1839
-## Balanced Accuracy      0.9994   0.9998   1.0000   0.9996   0.9999</code></pre>
-<p>From the confusion matrix we can find the accuracy of the model is as high as 1. The out of sample error is calculated as <code>1 - accuracy</code> for predictions made against the cross-validation set. The out of sample error is almost 0. The low out of sample error is in expectation.</p>
+## Sensitivity            0.9991   0.9802   0.9890   0.9790   0.9945
+## Specificity            0.9954   0.9973   0.9951   0.9989   1.0000
+## Pos Pred Value         0.9885   0.9887   0.9769   0.9945   1.0000
+## Neg Pred Value         0.9996   0.9953   0.9977   0.9959   0.9988
+## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2842   0.1897   0.1724   0.1605   0.1828
+## Detection Prevalence   0.2875   0.1918   0.1765   0.1614   0.1828
+## Balanced Accuracy      0.9972   0.9888   0.9920   0.9890   0.9972</code></pre>
+<p>From the confusion matrix we can find the accuracy of the model is as high as 0.9895. The out of sample error is calculated as <code>1 - accuracy</code> for predictions made against the cross-validation set. The out of sample error is 0.0105. The low out of sample error is in expectation.</p>
 <p>Then the model is applied to classify the 20 unkown samples. Since the same data preprocessing is already done. I have directly use the predict model to test the samples.</p>
-<pre class="r"><code>answers &lt;- predict(modFit, newdata = testing)</code></pre>
-<p>The final prediction shows that the prediction model works very well.</p>
+<pre class="r"><code>answers &lt;- predict(modFit, newdata = testing)
+answers</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
+<p>After submission, it shows the accuracy is 20/20. The final prediction shows that the prediction model works very well.</p>
 </div>
 
 

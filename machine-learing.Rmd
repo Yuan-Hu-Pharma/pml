@@ -44,8 +44,8 @@ The NAs are also removed out of the data set.
 ```{r cache=TRUE}
 library(plyr)
 # load data set
-train<-read.csv("pml-training.csv", sep=',', header=TRUE, na.strings = c('NA','#DIV/0!',''))
-test<-read.csv("pml-testing.csv", sep=',', header=TRUE, na.strings = c('NA','#DIV/0!',''))
+train<-read.csv("pml-training.csv", header=TRUE, na.strings = c('NA','#DIV/0!',''))
+test<-read.csv("pml-testing.csv", header=TRUE, na.strings = c('NA','#DIV/0!',''))
 
 ## remove columns with NA values
 aa <- train[,colSums(is.na(train))==0]
@@ -83,8 +83,10 @@ Since we have a large amount of observations, 60% is used for the training set a
 ```{r cache=TRUE}
 set.seed(1000)
 inTrain   <- createDataPartition(y=taa$classe, p=0.6, list=F)
-training  <-taa[inTrain,]
-validating<-taa[-inTrain,]
+## first 6 column are removed.
+training  <-taa[inTrain,-c(1:6)]
+validating<-taa[-inTrain,-c(1:6)]
+testing<-testing[, -c(1:6)]
 ```
 
 
@@ -103,7 +105,8 @@ The training set is then fitted with random forests method.
 ```{r cache=TRUE}
 set.seed(2000)
 library(randomForest)
-modFit <- train(classe ~ ., method = "rf", data =training, prox = TRUE)
+modFit <- train(classe ~ ., method = "rf", data =training, prox = TRUE, 
+                trControl = trainControl(method = "cv",number = 4, allowParallel = TRUE, verboseIter = TRUE))
 ```
 
 
@@ -116,8 +119,8 @@ cm<-confusionMatrix(Pred, validating$classe)
 cm
 ```
 
-From the confusion matrix we can find the accuracy of the model is as high as 1. 
-The out of sample error is calculated as `1 - accuracy` for predictions made against the cross-validation set. The out of sample error is almost 0. 
+From the confusion matrix we can find the accuracy of the model is as high as 0.9895. 
+The out of sample error is calculated as `1 - accuracy` for predictions made against the cross-validation set. The out of sample error is 0.0105. 
 The low out of sample error is in expectation.
 
 
@@ -125,6 +128,8 @@ Then the model is applied to classify the 20 unkown samples. Since the same data
 
 ```{r cache=TRUE}
 answers <- predict(modFit, newdata = testing)
+answers
 ```
 
-The final prediction shows that the prediction model works very well.
+After submission, it shows the accuracy  is 20/20.
+The final prediction shows that the prediction model works very well. 
