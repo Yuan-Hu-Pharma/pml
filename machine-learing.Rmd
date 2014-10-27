@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ## Synopsis
-  
+
 Quantified Self devices not only can quantify how much of a particular activity one does, but also quantify how well they do it. Due to the relatively inexpensive data collection, it is highly valued by a lot of companies to help improve health.
 
 The focus of this project is to utilize sampled data to build a model
@@ -48,8 +48,8 @@ train<-read.csv("pml-training.csv", sep=',', header=TRUE, na.strings = c('NA','#
 test<-read.csv("pml-testing.csv", sep=',', header=TRUE, na.strings = c('NA','#DIV/0!',''))
 
 ## remove columns with NA values
-train1 <- train[,colSums(is.na(train))==0]
-test1 <-  test[,colSums(is.na(test))==0]
+aa <- train[,colSums(is.na(train))==0]
+bb <-  test[,colSums(is.na(test))==0]
 ```
 
 After loading the data sets to data frame, near zero variance method is used to diagnose predictors that have one unique value.
@@ -58,9 +58,9 @@ After loading the data sets to data frame, near zero variance method is used to 
 ```{r cache=TRUE}
 #remove near zero column. nearZeroVar diagnoses  (i.e. are zero variance predictors)
 library(caret)
-nsv<-nearZeroVar(train1)
-train2<-train1[,-nsv]
-dim(train2)
+nsv<-nearZeroVar(aa)
+taa<-aa[,-nsv]
+dim(taa)
 ```
 After the diagnostic test,  there are 47 columns left and 19622 observations in the train data set.
 
@@ -68,7 +68,7 @@ The near zero variance method is not applied to the testing set. To keep the dat
 
 
 ```{r cache=TRUE}
-testing<-test1[,-nsv]
+testing<-bb[,-nsv]
 ```
 
 
@@ -82,9 +82,9 @@ Since we have a large amount of observations, 60% is used for the training set a
 
 ```{r cache=TRUE}
 set.seed(1000)
-inTrain<- createDataPartition(y=train2$classe, p=0.6, list=F)
-training <-train2[inTrain,]
-validating <-train2[-inTrain,]
+inTrain   <- createDataPartition(y=taa$classe, p=0.6, list=F)
+training  <-taa[inTrain,]
+validating<-taa[-inTrain,]
 ```
 
 
@@ -101,9 +101,9 @@ As learned from the class, this method can lead to a little bit overfitting. It'
 The training set is then fitted with random forests method.
 
 ```{r cache=TRUE}
-set.seed(1000)
+set.seed(2000)
 library(randomForest)
-modFit <- train(classe ~ ., method = "rf", data =training, prox = TRUE,  trControl = trainControl(method = "cv",number = 4, allowParallel = TRUE))
+modFit <- train(classe ~ ., method = "rf", data =training, prox = TRUE)
 ```
 
 
@@ -116,8 +116,8 @@ cm<-confusionMatrix(Pred, validating$classe)
 cm
 ```
 
-From the confusion matrix we can find the accuracy of the model is 0.994. 
-The out of sample error is calculated as `1 - accuracy` for predictions made against the cross-validation set. The out of sample error is 0.006. 
+From the confusion matrix we can find the accuracy of the model is as high as 1. 
+The out of sample error is calculated as `1 - accuracy` for predictions made against the cross-validation set. The out of sample error is almost 0. 
 The low out of sample error is in expectation.
 
 
@@ -125,9 +125,6 @@ Then the model is applied to classify the 20 unkown samples. Since the same data
 
 ```{r cache=TRUE}
 answers <- predict(modFit, newdata = testing)
-answers
 ```
 
-The final prediction give a 20/20 correct answer to the testing data set.
-
-It shows that the prediction model works very well.
+The final prediction shows that the prediction model works very well.
